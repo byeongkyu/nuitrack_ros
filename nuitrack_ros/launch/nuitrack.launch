@@ -1,0 +1,12 @@
+<launch>
+    <arg name="prefix" default="nuitrack" />
+    <arg name="manager_name" value="$(arg prefix)_nodelet_manager" />
+
+    <node name="$(arg manager_name)" type="nodelet" pkg="nodelet" args="manager" output="screen"/>
+    <node name="$(arg prefix)_core" type="nodelet" pkg="nodelet" args="load nodelet_nuitrack_ros/NuitrackCore $(arg manager_name)" output="screen" />
+
+    <node name="$(arg prefix)_user_viewer" type="viewer_node.py" pkg="nuitrack_user_viewer" output="screen" />
+    <include file="$(find rgbd_launch)/launch/kinect_frames.launch">
+        <arg name="camera" value="$(arg prefix)"/>
+    </include>
+</launch>
