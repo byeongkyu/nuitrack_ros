@@ -1,5 +1,3 @@
-#include <pluginlib/class_list_macros.h>
-#include <nodelet/nodelet.h>
 #include <ros/ros.h>
 #include <nuitrack/Nuitrack.h>
 #include <sensor_msgs/Image.h>
@@ -11,22 +9,16 @@
 
 using namespace tdv::nuitrack;
 
-namespace nodelet_nuitrack_ros
-{
-
-class NuitrackCore: public nodelet::Nodelet
+class NuitrackCore
 {
 public:
-    NuitrackCore() {}
-
-    virtual void onInit()
+    NuitrackCore(ros::NodeHandle nh)
     {
-        ros::NodeHandle& private_nh = getPrivateNodeHandle();
-        pub_rgb_data_ = private_nh.advertise<sensor_msgs::Image>("/nuitrack/rgb/image_raw", 1);
-        pub_pcl_data_ = private_nh.advertise<sensor_msgs::PointCloud2>("/nuitrack/depth/points", 1);
-        pub_user_data_ = private_nh.advertise<nuitrack_msgs::UserDataArray>("/nuitrack/detected_users", 10);
-        pub_event_person_appeared_ = private_nh.advertise<nuitrack_msgs::EventUserUpdate>("/nuitrack/event/person_appeared", 10);
-        pub_event_person_disappeared_ = private_nh.advertise<nuitrack_msgs::EventUserUpdate>("/nuitrack/event/person_disappeared", 10);
+        pub_rgb_data_ = nh.advertise<sensor_msgs::Image>("/nuitrack/rgb/image_raw", 1);
+        pub_pcl_data_ = nh.advertise<sensor_msgs::PointCloud2>("/nuitrack/depth/points", 1);
+        pub_user_data_ = nh.advertise<nuitrack_msgs::UserDataArray>("/nuitrack/detected_users", 10);
+        pub_event_person_appeared_ = nh.advertise<nuitrack_msgs::EventUserUpdate>("/nuitrack/event/person_appeared", 10);
+        pub_event_person_disappeared_ = nh.advertise<nuitrack_msgs::EventUserUpdate>("/nuitrack/event/person_disappeared", 10);
 
         try
         {
@@ -50,6 +42,9 @@ public:
         userTracker_->connectOnLostUser(std::bind(&NuitrackCore::onLostUser, this, std::placeholders::_1));
         userTracker_->connectOnUpdate(std::bind(&NuitrackCore::onUserUpdate, this, std::placeholders::_1));
 
+        skeletonTracker_ = SkeletonTracker::create();
+        skeletonTracker_->connectOnUpdate(std::bind(&NuitrackCore::onSkeletonUpdate, this, std::placeholders::_1));
+
         try
         {
             Nuitrack::run();
@@ -60,8 +55,8 @@ public:
             assert(false);
         }
 
-        timer_ = private_nh.createTimer(ros::Duration(1/30), &NuitrackCore::timerCallback, this);
-        NODELET_INFO("Initialized nuitrack_core...");
+        timer_ = nh.createTimer(ros::Duration(1/30), &NuitrackCore::timerCallback, this);
+        ROS_INFO("Initialized nuitrack_core...");
     }
 
     ~NuitrackCore()
@@ -80,7 +75,9 @@ private:
         try
         {
             Nuitrack::update(colorSensor_);
+            Nuitrack::update(depthSensor_);
             Nuitrack::update(userTracker_);
+            Nuitrack::update(skeletonTracker_);
         }
         catch (LicenseNotAcquiredException& e)
         {
@@ -252,5 +249,12 @@ private:
     // GestureRecognizer::Ptr gestureRecognizer_;
 };
 
-PLUGINLIB_EXPORT_CLASS(nodelet_nuitrack_ros::NuitrackCore, nodelet::Nodelet);
+int main(int argc, char **argv)
+{
+    ros::init(argc, argv, "nuitrack_core");
+    ros::NodeHandle nh;
+    NuitrackCore m(nh);
+    ros::spin();
+
+    return 0;
 }

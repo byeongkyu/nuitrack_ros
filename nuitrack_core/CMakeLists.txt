@@ -8,7 +8,6 @@ add_compile_options(-std=c++11)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  nodelet
   roscpp
   std_msgs
   nuitrack_msgs
@@ -104,8 +103,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-  LIBRARIES nuitrack_core
-  CATKIN_DEPENDS nodelet roscpp std_msgs
+#  LIBRARIES nuitrack_core
+#  CATKIN_DEPENDS nodelet roscpp std_msgs
 #  DEPENDS system_lib
 )
 
@@ -129,18 +128,18 @@ link_directories(
 #   src/${PROJECT_NAME}/nuitrack_core.cpp
 # )
 
-add_library(nuitrack_core
+add_executable(nuitrack_core_node
   src/nuitrack_core.cpp
 )
 
-target_link_libraries(nuitrack_core
+target_link_libraries(nuitrack_core_node
   ${catkin_LIBRARIES}
   nuitrack
 )
 
-if(catkin_EXPORTED_LIBRARIES)
-  add_dependencies(nuitrack_core ${catkin_EXPORTED_LIBRARIES})
-endif()
+# if(catkin_EXPORTED_LIBRARIES)
+#   add_dependencies(nuitrack_core ${catkin_EXPORTED_LIBRARIES})
+# endif()
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
