@@ -3,6 +3,8 @@
 #include <ros/ros.h>
 #include <nuitrack/Nuitrack.h>
 #include <sensor_msgs/Image.h>
+#include <sensor_msgs/point_cloud2_iterator.h>
+#include <sensor_msgs/PointCloud2.h>
 #include <nuitrack_msgs/UserData.h>
 #include <nuitrack_msgs/UserDataArray.h>
 #include <nuitrack_msgs/EventUserUpdate.h>
@@ -21,9 +23,10 @@ public:
     {
         ros::NodeHandle& private_nh = getPrivateNodeHandle();
         pub_rgb_data_ = private_nh.advertise<sensor_msgs::Image>("/nuitrack/rgb/image_raw", 1);
+        pub_pcl_data_ = private_nh.advertise<sensor_msgs::PointCloud2>("/nuitrack/depth/points", 1);
         pub_user_data_ = private_nh.advertise<nuitrack_msgs::UserDataArray>("/nuitrack/detected_users", 10);
-        pub_event_person_appeared_ = private_nh.advertise<nuitrack_msgs::EventUserUpdate>("/nuitrack/event_person_appeared", 10);
-        pub_event_person_disappeared_ = private_nh.advertise<nuitrack_msgs::EventUserUpdate>("/nuitrack/event_person_disappeared", 10);
+        pub_event_person_appeared_ = private_nh.advertise<nuitrack_msgs::EventUserUpdate>("/nuitrack/event/person_appeared", 10);
+        pub_event_person_disappeared_ = private_nh.advertise<nuitrack_msgs::EventUserUpdate>("/nuitrack/event/person_disappeared", 10);
 
         try
         {
@@ -33,6 +36,9 @@ public:
 
         colorSensor_ = ColorSensor::create();
         colorSensor_->connectOnNewFrame(std::bind(&NuitrackCore::onNewRGBFrame, this, std::placeholders::_1));
+
+        depthSensor_ = DepthSensor::create();
+        depthSensor_->connectOnNewFrame(std::bind(&NuitrackCore::onNewDepthFrame, this, std::placeholders::_1));
 
         OutputMode colorOutputMode = colorSensor_->getOutputMode();
 
@@ -173,9 +179,63 @@ private:
         pub_rgb_data_.publish(img);
     }
 
+    sensor_msgs::PointCloud2 depthToCloud(int width, int height, const uint16_t* depth)
+    {
+        sensor_msgs::PointCloud2 cloud;
+        cloud.header.frame_id = "nuitrack_link";
+        cloud.header.stamp = ros::Time::now();
+
+        cloud.is_bigendian = false;
+        cloud.is_dense = false;
+
+        sensor_msgs::PointCloud2Modifier modifier(cloud);
+        modifier.setPointCloud2FieldsByString(1, "xyz");
+        modifier.resize(width * height);
+
+        cloud.width = width;
+        cloud.height = height;
+        cloud.row_step = 16 * width;
+
+        sensor_msgs::PointCloud2Iterator<float> out_x(cloud, "x");
+        sensor_msgs::PointCloud2Iterator<float> out_y(cloud, "y");
+        sensor_msgs::PointCloud2Iterator<float> out_z(cloud, "z");
+
+        for(int h = 0; h < height; h++)
+        {
+            for(int w = 0; w < width; w++)
+            {
+                Vector3 data = depthSensor_->convertProjToRealCoords(w, h, depth[h * width + w]);
+
+                *out_x = data.z / 1000.0;
+                *out_y = -data.x / 1000.0;
+                *out_z = data.y / 1000.0;
+
+                ++out_x;
+                ++out_y;
+                ++out_z;
+            }
+        }
+
+        return cloud;
+    }
+
+    void onNewDepthFrame(DepthFrame::Ptr frame)
+    {
+        const uint16_t* depthPtr = frame->getData();
+
+        sensor_msgs::PointCloud2 points = depthToCloud(frame->getCols(), frame->getRows(), depthPtr);
+        pub_pcl_data_.publish(points);
+    }
+
+    void onSkeletonUpdate(SkeletonData::Ptr userSkeletons)
+    {
+        ROS_INFO("Skeleton");
+    }
+
 private:
     ros::Timer timer_;
     ros::Publisher pub_rgb_data_;
+    ros::Publisher pub_pcl_data_;
     ros::Publisher pub_user_data_;
     ros::Publisher pub_event_person_appeared_;
     ros::Publisher pub_event_person_disappeared_;
@@ -185,10 +245,11 @@ private:
     std::vector<int> current_user_list_;
 
     ColorSensor::Ptr colorSensor_;
+    DepthSensor::Ptr depthSensor_;
     UserTracker::Ptr userTracker_;
     SkeletonTracker::Ptr skeletonTracker_;
-    HandTracker::Ptr handTracker_;
-    GestureRecognizer::Ptr gestureRecognizer_;
+    // HandTracker::Ptr handTracker_;
+    // GestureRecognizer::Ptr gestureRecognizer_;
 };
 
 PLUGINLIB_EXPORT_CLASS(nodelet_nuitrack_ros::NuitrackCore, nodelet::Nodelet);
