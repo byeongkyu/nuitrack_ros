@@ -52,6 +52,8 @@ add_message_files(
   FILES
   UserData.msg
   UserDataArray.msg
+  SkeletonData.msg
+  SkeletonDataArray.msg
   EventUserUpdate.msg
 )
 

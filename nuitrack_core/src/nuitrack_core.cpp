@@ -6,16 +6,27 @@
 #include <nuitrack_msgs/UserData.h>
 #include <nuitrack_msgs/UserDataArray.h>
 #include <nuitrack_msgs/EventUserUpdate.h>
+#include <nuitrack_msgs/SkeletonData.h>
+#include <nuitrack_msgs/SkeletonDataArray.h>
 
 using namespace tdv::nuitrack;
+
+std::map<int, std::string> JOINT_NAMES = {{JOINT_HEAD, "joint_head"}, {JOINT_NECK, "joint_neck"}, {JOINT_TORSO, "joint_torso"}, {JOINT_WAIST, "joint_waist"},
+                                          {JOINT_LEFT_COLLAR, "joint_left_collar"}, {JOINT_LEFT_SHOULDER, "joint_left_shoulder"}, {JOINT_LEFT_ELBOW, "joint_left_elbow"}, {JOINT_LEFT_WRIST, "joint_left_wrist"}, {JOINT_LEFT_HAND, "joint_left_hand"},
+                                          {JOINT_RIGHT_COLLAR, "joint_right_collar"}, {JOINT_RIGHT_SHOULDER, "joint_right_shoulder"}, {JOINT_RIGHT_ELBOW, "joint_right_elbow"}, {JOINT_RIGHT_WRIST, "joint_right_wrist"}, {JOINT_RIGHT_HAND, "joint_right_hand"},
+                                          {JOINT_LEFT_HIP, "joint_left_hip"}, {JOINT_LEFT_KNEE, "joint_left_knee"}, {JOINT_LEFT_ANKLE, "joint_left_ankle"},
+                                          {JOINT_RIGHT_HIP, "joint_right_hip"}, {JOINT_RIGHT_KNEE, "joint_right_knee"}, {JOINT_RIGHT_ANKLE, "joint_right_ankle"}};
 
 class NuitrackCore
 {
 public:
     NuitrackCore(ros::NodeHandle nh)
     {
+
+
         pub_rgb_data_ = nh.advertise<sensor_msgs::Image>("/nuitrack/rgb/image_raw", 1);
         pub_pcl_data_ = nh.advertise<sensor_msgs::PointCloud2>("/nuitrack/depth/points", 1);
+        pub_skeleton_data_ = nh.advertise<nuitrack_msgs::SkeletonDataArray>("nuitrack/skeletons", 1);
         pub_user_data_ = nh.advertise<nuitrack_msgs::UserDataArray>("/nuitrack/detected_users", 10);
         pub_event_person_appeared_ = nh.advertise<nuitrack_msgs::EventUserUpdate>("/nuitrack/event/person_appeared", 10);
         pub_event_person_disappeared_ = nh.advertise<nuitrack_msgs::EventUserUpdate>("/nuitrack/event/person_disappeared", 10);
@@ -224,9 +235,33 @@ private:
         pub_pcl_data_.publish(points);
     }
 
-    void onSkeletonUpdate(SkeletonData::Ptr userSkeletons)
+    void onSkeletonUpdate(SkeletonData::Ptr skeletonData)
     {
-        ROS_INFO("Skeleton");
+        nuitrack_msgs::SkeletonDataArray msg;
+
+        auto skeletons = skeletonData->getSkeletons();
+        for(size_t i = 0; i < skeletonData->getNumSkeletons(); i++)
+        {
+            nuitrack_msgs::SkeletonData data;
+
+            data.id = skeletons[i].id;
+
+            for(auto const& j : JOINT_NAMES)
+            {
+                data.joints.push_back(j.second);
+
+                geometry_msgs::Point p;
+                p.x = skeletons[i].joints[j.first].real.x;
+                p.y = skeletons[i].joints[j.first].real.y;
+                p.z = skeletons[i].joints[j.first].real.z;
+
+                data.joint_pos.push_back(p);
+            }
+
+            msg.skeletons.push_back(data);
+        }
+
+        pub_skeleton_data_.publish(msg);
     }
 
 private:
@@ -234,6 +269,7 @@ private:
     ros::Publisher pub_rgb_data_;
     ros::Publisher pub_pcl_data_;
     ros::Publisher pub_user_data_;
+    ros::Publisher pub_skeleton_data_;
     ros::Publisher pub_event_person_appeared_;
     ros::Publisher pub_event_person_disappeared_;
 
