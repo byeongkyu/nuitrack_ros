@@ -1,10 +1,23 @@
 <launch>
     <arg name="prefix" default="nuitrack" />
+    <arg name="use_openni2" default="true" />
+    <arg name="use_realsense" default="false" />
+
+    <arg name="offset_x" default="0.0" />
+    <arg name="offset_y" default="0.0" />
+    <arg name="offset_z" default="0.0" />
+    <arg name="offset_roll" default="0.0" />
+    <arg name="offset_pitch" default="0.0" />
+    <arg name="offset_yaw" default="0.0" />
 
     <node name="$(arg prefix)_core" type="nuitrack_core_node" pkg="nuitrack_core"  output="screen" />
 
     <node name="$(arg prefix)_user_viewer" type="viewer_node.py" pkg="nuitrack_user_viewer" output="screen" />
-    <include file="$(find rgbd_launch)/launch/kinect_frames.launch">
+    <include file="$(find rgbd_launch)/launch/kinect_frames.launch" if="$(arg use_openni2)">
         <arg name="camera" value="$(arg prefix)"/>
     </include>
+
+    <node name="static_nuitrack_tf_publisher" type="static_transform_publisher" pkg="tf2_ros"
+        args="$(arg offset_x) $(arg offset_y) $(arg offset_z) $(arg offset_roll) $(arg offset_pitch) $(arg offset_yaw) base_link $(arg prefix)_link"
+        output="screen" if="$(arg use_realsense)" />
 </launch>
