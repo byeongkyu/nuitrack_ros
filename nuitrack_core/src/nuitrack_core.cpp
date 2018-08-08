@@ -26,7 +26,7 @@ public:
 
         pub_rgb_data_ = nh.advertise<sensor_msgs::Image>("/nuitrack/rgb/image_raw", 1);
         pub_pcl_data_ = nh.advertise<sensor_msgs::PointCloud2>("/nuitrack/depth/points", 1);
-        pub_skeleton_data_ = nh.advertise<nuitrack_msgs::SkeletonDataArray>("nuitrack/skeletons", 1);
+        pub_skeleton_data_ = nh.advertise<nuitrack_msgs::SkeletonDataArray>("/nuitrack/skeletons", 1);
         pub_user_data_ = nh.advertise<nuitrack_msgs::UserDataArray>("/nuitrack/detected_users", 10);
         pub_event_person_appeared_ = nh.advertise<nuitrack_msgs::EventUserUpdate>("/nuitrack/event/person_appeared", 10);
         pub_event_person_disappeared_ = nh.advertise<nuitrack_msgs::EventUserUpdate>("/nuitrack/event/person_disappeared", 10);
