@@ -238,6 +238,8 @@ private:
     void onSkeletonUpdate(SkeletonData::Ptr skeletonData)
     {
         nuitrack_msgs::SkeletonDataArray msg;
+        msg.header.stamp = ros::Time::now();
+        msg.header.frame_id = 'nuitrack_link';
 
         auto skeletons = skeletonData->getSkeletons();
         for(size_t i = 0; i < skeletonData->getNumSkeletons(); i++)
