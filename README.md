@@ -18,6 +18,7 @@ ROS package for interfacing with nuitrack API
 
 
 * Install https://nuitrack.com and Download Nuitrack Pro for Linux
+  visit http://download.3divi.com/Nuitrack/platforms,
 
         $ sudo dpkg -i nuitrack-ubuntu-amd64.deb
 
